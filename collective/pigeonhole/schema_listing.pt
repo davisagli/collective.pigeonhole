@@ -1,0 +1,55 @@
+<tal:root>
+<script type="text/javascript" charset="utf-8">
+// <![CDATA[
+(function($){
+$(document).ready(function() {
+
+    common_content_filter = '#content>*:not(div.configlet),dl.portalMessage.error,dl.portalMessage.info';
+
+    // add new type form
+    $('#add-schema').prepOverlay({
+        subtype: 'ajax',
+        filter: common_content_filter,
+        formselector: '#add-schema-form',
+        noform: 'reload'
+    });
+    
+    // delete schema confirmation
+    $('#crud-edit-form-buttons-delete').click(function(e) {
+        if(!confirm('Are you sure you want to delete these types?')) {
+            $(this).removeClass('submitting');
+            e.preventDefault();
+        }
+    });
+    
+});
+})(jQuery);
+// ]]>
+</script>
+
+<dl class="portalMessage"
+     tal:condition="view/status">
+  <dt>Info</dt>
+  <dd tal:content="view/status"/>
+</dl>
+
+<p class="crud-description"
+     tal:condition="view/description"
+     tal:content="view/description">
+</p>
+
+<form id="add-schema" method="GET"
+      tal:attributes="action string:${context/absolute_url}/@@add-schema">
+  <input type="submit" style="float: right; display: block;"
+         value="Add New Schema&hellip;"/>
+</form>
+
+<div tal:repeat="form view/subforms"
+     tal:content="structure form/render"
+     class="crud-form">
+</div>
+
+<div class="action" tal:repeat="action view/actions/values">
+  <input type="submit" tal:replace="structure action/render" />
+</div>
+</tal:root>

@@ -1,0 +1,38 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    xmlns:gs="http://namespaces.zope.org/genericsetup"
+    xmlns:plone="http://namespaces.plone.org/plone"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="collective.pigeonhole">
+
+  <!-- Include configuration for dependencies listed in setup.py -->
+  <includeDependencies package="." />
+
+  <gs:registerProfile
+      name="default"
+      title="collective.pigeonhole"
+      directory="profiles/default"
+      description="Extension profile for collective.pigeonhole"
+      provides="Products.GenericSetup.interfaces.EXTENSION"
+      />
+
+  <!-- Control panel -->
+
+  <browser:page
+      name="pigeonhole-schemas"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      class=".controlpanel.PigeonholeControlPanel"
+      permission="plone.schemaeditor.ManageSchemata"
+      allowed_interface="OFS.interfaces.IItem" />
+    
+  <browser:page
+      name="contents"
+      for=".controlpanel.PigeonholeControlPanel"
+      class=".controlpanel.PigeonholeSchemaListingView"
+      permission="plone.schemaeditor.ManageSchemata" />
+
+  <!-- -*- extra stuff goes here -*- -->
+
+</configure>
