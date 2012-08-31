@@ -7,10 +7,10 @@ class IPigeonholeSchemaSettings(Interface):
 
     title = schema.TextLine(title=u'Title')
     name = schema.ASCIILine(title=u'Name')
-    schema_xml = schema.Text(title = u'Schema XML')
+    schema_xml = schema.ASCII(title = u'Schema XML', default='<model xmlns="http://namespaces.plone.org/supermodel/schema"><schema></schema></model>')
     types = schema.Set(
         value_type = schema.Choice(
-            vocabulary = 'plone.app.vocabulary.ReallyUserFriendlyTypes',
+            vocabulary = 'plone.app.vocabularies.ReallyUserFriendlyTypes',
             )
         )
     condition = schema.ASCIILine(

@@ -16,7 +16,7 @@ $(document).ready(function() {
     
     // delete schema confirmation
     $('#crud-edit-form-buttons-delete').click(function(e) {
-        if(!confirm('Are you sure you want to delete these types?')) {
+        if(!confirm('Are you sure you want to delete these schemas?')) {
             $(this).removeClass('submitting');
             e.preventDefault();
         }

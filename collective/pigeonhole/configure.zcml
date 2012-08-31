@@ -33,6 +33,32 @@
       class=".controlpanel.PigeonholeSchemaListingView"
       permission="plone.schemaeditor.ManageSchemata" />
 
+  <browser:page
+      name="add-schema"
+      for=".controlpanel.PigeonholeControlPanel"
+      class=".controlpanel.PigeonholeSchemaAddForm"
+      permission="plone.schemaeditor.ManageSchemata" />
+
+  <subscriber
+      for=".interfaces.IPigeonholeSchema
+           plone.schemaeditor.interfaces.ISchemaModifiedEvent"
+      handler=".controlpanel.serializeSchemaContext"
+      />
+
+  <!-- Archetypes -->
+  <adapter
+      factory=".at_schema.PigeonholeSchemaExtender"
+      for="Products.Archetypes.interfaces.IBaseObject"
+      provides="archetypes.schemaextender.interfaces.ISchemaExtender" />
+
+  <!-- catalog -->
+  <subscriber
+      for=".interfaces.IPigeonholeSchema plone.schemaeditor.utils.FieldAddedEvent"
+      handler=".catalog.handle_field_added" />
+  <subscriber
+      for=".interfaces.IPigeonholeSchema plone.schemaeditor.utils.FieldRemovedEvent"
+      handler=".catalog.handle_field_removed" />
+
   <!-- -*- extra stuff goes here -*- -->
 
 </configure>

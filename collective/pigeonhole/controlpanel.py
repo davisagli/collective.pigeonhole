@@ -3,19 +3,24 @@ from OFS.SimpleItem import SimpleItem
 from zope.interface import implements
 from zope.cachedescriptors.property import Lazy as lazy_property
 from zope.component import getUtility
+from zope.globalrequest import getRequest
 from zope.publisher.interfaces.browser import IBrowserPublisher
 from zope.app.pagetemplate.viewpagetemplatefile import ViewPageTemplateFile
 
-from z3c.form import field, button
+from z3c.form import field, form, button
 from plone.z3cform.crud import crud
-from plone.z3cform.layout import wrap_form
+from plone.z3cform import layout
+
+from plone.registry.interfaces import IRegistry
 from plone.app.registry.browser.controlpanel import ControlPanelFormWrapper
 
 from plone.schemaeditor.browser.schema.traversal import SchemaContext
+import plone.supermodel
 
 from collective.pigeonhole.interfaces import IPigeonholeSchemaSettings
 from collective.pigeonhole.interfaces import IPigeonholeSchema
-from collective.pigeonhole import MessageFactory as _
+from collective.pigeonhole import REGISTRY_BASE_PREFIX
+from collective.pigeonhole import _
 
 
 class PigeonholeSchemaEditForm(crud.EditForm):
@@ -63,76 +68,63 @@ class PigeonholeSchemaListing(crud.CrudForm):
     def link(self, item, field):
         """ Generate links to the edit page for each schema.
         """
-        return '%s/%s' % (self.context.absolute_url(), item.__name__)
+        if field == 'title':
+            return '%s/%s' % (self.context.absolute_url(), item.name)
 
 PigeonholeSchemaListingView = layout.wrap_form(PigeonholeSchemaListing, ControlPanelFormWrapper)
 PigeonholeSchemaListingView.label = u"Pigeonhole metadata"
 
 
-class PigeonholeSchemaAddForm(form.AddForm):
+class PigeonholeSchemaAddForm(form.Form):
 
     label = _(u'Add Metadata Schema')
-    fields = field.Fields(IPigeonholeSchema).select('title', 'name', 'types', 'condition')
+    fields = field.Fields(IPigeonholeSchemaSettings).select('title', 'name', 'types', 'condition')
+    ignoreContext = True
     id = 'add-schema-form'
 
-    def create(self, data):
-        id = data.pop('id')
+    @button.buttonAndHandler(u'Add Schema')
+    def handleAdd(self, action):
+        data, errors = self.extractData()
+        if errors:
+            self.status = self.formErrorsMessage
+            return
 
-        fti = DexterityFTI(id)
-        fti.id = id
-        data['title'] = data['title'].encode('utf8')
-        if data['description']:
-            data['description'] = data['description'].encode('utf8')
-        data['i18n_domain'] = 'plone'
-        data['behaviors'] = "\n".join(['plone.app.dexterity.behaviors.metadata.IDublinCore',
-                                       'plone.app.content.interfaces.INameFromTitle',
-                                       ])
-        data['model_source'] = """
-<model xmlns="http://namespaces.plone.org/supermodel/schema">
-    <schema>
-    </schema>
-</model>
-"""
-        if data['container']:
-            data['klass'] = 'plone.dexterity.content.Container'
-            data['filter_content_types'] = False
-            del data['container']
-            icon = 'folder_icon'
-        else:
-            icon = 'document_icon'
-        if PLONE40:
-            data['icon_expr'] = 'string:${portal_url}/' + icon + '.png'
-        data['content_icon'] = icon + '.gif'
-        fti.manage_changeProperties(**data)
-        return fti
-
-    def add(self, fti):
+        name = data['name']
         registry = getUtility(IRegistry)
         schemas = registry.collectionOfInterface(IPigeonholeSchemaSettings, prefix=REGISTRY_BASE_PREFIX)
+        record = schemas.setdefault(name)
+        for fname in ('name', 'title', 'types', 'condition'):
+            setattr(record, fname, data[fname])
 
-        registry = getUtility(IRegistry)
-        schemas = registry.collectionOfInterface()
-        ttool = getToolByName(self.context, 'portal_types')
-        ttool._setObject(fti.id, fti)
         self.status = _(u"Schema added successfully.")
+        self.request.response.redirect(self.context.absolute_url())
 
-    def nextURL(self):
-        return self.context.absolute_url()
+
+def serializeSchemaContext(schema_context, event=None):
+    # save changes to registry
+    registry = getUtility(IRegistry)
+    prefix = REGISTRY_BASE_PREFIX + '/' + schema_context.__name__
+    settings = registry.forInterface(IPigeonholeSchemaSettings, prefix=prefix)
+    settings.schema_xml = plone.supermodel.serializeSchema(schema_context.schema)
 
 
 class PigeonholeSchema(SchemaContext):
-    implements(IPigeonholeSchemaContext)
+    implements(IPigeonholeSchema)
     
-    def __init__(self, name, request):
+    def __init__(self, name):
         registry = getUtility(IRegistry)
-        prefix = REGISTRY_BASE_PREFIX + name
+        prefix = REGISTRY_BASE_PREFIX + '/' + name
         settings = registry.forInterface(IPigeonholeSchemaSettings, prefix=prefix)
-        self.context = self.schema = plone.supermodel.loadString(settings.schema_xml)
+        self.context = self.schema = plone.supermodel.loadString(settings.schema_xml).schema
 
         self.request = getRequest()
         self.id = None
         self.__name__ = name
         self.Title = lambda: settings.title
+
+    @property
+    def allowedFields(self):
+        return set(['zope.schema._field.List', 'zope.schema._field.Choice'])
 
 
 class PigeonholeControlPanel(SimpleItem):
