@@ -19,4 +19,4 @@ def handle_field_removed(ph_schema, event):
     index_name = ph_schema.__name__ + '.' + field.__name__
     catalog = getToolByName(getSite(), 'portal_catalog')
     if index_name in catalog.Indexes:
-        catalog.removeIndex(index_name)
+        catalog.delIndex(index_name)

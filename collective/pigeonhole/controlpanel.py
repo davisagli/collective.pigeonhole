@@ -124,7 +124,7 @@ class PigeonholeSchema(SchemaContext):
 
     @property
     def allowedFields(self):
-        return set(['zope.schema._field.List', 'zope.schema._field.Choice'])
+        return set(['zope.schema._field.Set', 'zope.schema._field.Choice'])
 
 
 class PigeonholeControlPanel(SimpleItem):
