@@ -1,6 +1,16 @@
 from zope import schema
-from zope.interface import Interface
+from zope.interface import Interface, Invalid
 from plone.schemaeditor.interfaces import ISchemaContext
+
+from Products.PageTemplates.Expressions import getEngine
+
+
+def isValidExpression(value):
+    try:
+        getEngine().compile(value)
+    except:
+        raise Invalid(u'Please enter a valid TALES expression.')
+    return True
 
 
 class IPigeonholeSchemaSettings(Interface):
@@ -16,7 +26,9 @@ class IPigeonholeSchemaSettings(Interface):
     condition = schema.ASCIILine(
         title = u'Condition',
         description=u'A TALES expression. If specified, it must evaluate to true in order to show the schema.',
-        required = False)
+        required = False,
+        constraint = isValidExpression,
+        )
 
 
 class IPigeonholeSchema(ISchemaContext):
