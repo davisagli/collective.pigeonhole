@@ -61,7 +61,7 @@ class PigeonholeSchemaExtender(object):
             if self.context.portal_type not in settings.types:
                 continue
 
-            if condition is not None:
+            if condition is not None and getattr(self.context, 'REQUEST', None) is getRequest():
                 econtext = getExprContext(self.context, self.context)
                 if not Expression(settings.condition)(econtext):
                     continue
