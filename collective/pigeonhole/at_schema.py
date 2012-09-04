@@ -1,9 +1,12 @@
+from zope.annotation.interfaces import IAnnotations
 from zope.interface import implements
 from zope.component import adapts, getUtility
+from zope.globalrequest import getRequest
 from zope.schema import getFieldsInOrder
 from zope.schema.interfaces import ISet, IChoice
 from archetypes.schemaextender.interfaces import ISchemaExtender
 from archetypes.schemaextender.field import ExtensionField
+from plone.memoize import request, volatile
 from plone.registry.interfaces import IRegistry
 import plone.supermodel
 
@@ -23,6 +26,13 @@ class LinesField(ExtensionField, atapi.LinesField):
     pass
 
 
+def _cache_key(self, *args, **kw):
+    return
+
+def _request_cache(func, *args, **kw):
+    return IAnnotations(getRequest())
+
+
 class PigeonholeSchemaExtender(object):
     implements(ISchemaExtender)
     adapts(IBaseObject)
@@ -30,24 +40,42 @@ class PigeonholeSchemaExtender(object):
     def __init__(self, context):
         self.context = context
     
+    @volatile.cache(_cache_key, get_cache=_request_cache)
+    def _getSchemaInfo(self):
+        registry = getUtility(IRegistry)
+        schema_info = registry.collectionOfInterface(IPigeonholeSchemaSettings, prefix=REGISTRY_BASE_PREFIX)
+        res = []
+        for schema_name, settings in schema_info.items():
+            schema = plone.supermodel.loadString(settings.schema_xml).schema
+            if settings.condition:
+                condition = Expression(settings.condition)
+            else:
+                condition = None
+            res.append((schema_name, settings, condition, schema))
+        return res
+
+    @volatile.cache(_cache_key, get_cache=volatile.store_on_context)
+    def _getSchemas(self):
+        schemas = []
+        for schema_name, settings, condition, schema in self._getSchemaInfo():
+            if self.context.portal_type not in settings.types:
+                continue
+
+            if condition is not None:
+                econtext = getExprContext(self.context, self.context)
+                if not Expression(settings.condition)(econtext):
+                    continue
+
+            schemas.append((schema_name, schema))
+
+        return schemas
+
     def getFields(self):
         registry = getUtility(IRegistry)
         schemas = registry.collectionOfInterface(IPigeonholeSchemaSettings, prefix=REGISTRY_BASE_PREFIX)
 
         fields = []
-        for schema_name, settings in schemas.items():
-            if self.context.portal_type not in settings.types:
-                continue
-
-            if settings.condition:
-                # XXX cache
-                econtext = getExprContext(self.context, self.context)
-                if not Expression(settings.condition)(econtext):
-                    continue
-
-            # XXX cache
-            schema = plone.supermodel.loadString(settings.schema_xml).schema
-
+        for schema_name, schema in self._getSchemas():
             for field_name, field in getFieldsInOrder(schema):
                 if IChoice.providedBy(field):
                     fields.append(StringField(
