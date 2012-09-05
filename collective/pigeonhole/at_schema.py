@@ -30,7 +30,10 @@ def _cache_key(self, *args, **kw):
     return
 
 def _request_cache(func, *args, **kw):
-    return IAnnotations(getRequest())
+    request = getRequest()
+    if request is not None:
+        return IAnnotations(request)
+    return {}
 
 
 class PigeonholeSchemaExtender(object):
