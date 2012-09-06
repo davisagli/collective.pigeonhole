@@ -6,7 +6,7 @@ from zope.schema import getFieldsInOrder
 from zope.schema.interfaces import ISet, IChoice
 from archetypes.schemaextender.interfaces import ISchemaExtender
 from archetypes.schemaextender.field import ExtensionField
-from plone.memoize import request, volatile
+from plone.memoize import volatile
 from plone.registry.interfaces import IRegistry
 import plone.supermodel
 
@@ -15,7 +15,6 @@ from Products.Archetypes import atapi
 from Products.Archetypes.interfaces import IBaseObject
 
 from collective.pigeonhole.interfaces import IPigeonholeSchemaSettings
-from collective.pigeonhole.interfaces import IPigeonholeSchema
 from collective.pigeonhole import REGISTRY_BASE_PREFIX
 
 
@@ -61,7 +60,10 @@ class PigeonholeSchemaExtender(object):
     def _getSchemas(self):
         schemas = []
         for schema_name, settings, condition, schema in self._getSchemaInfo():
-            if self.context.portal_type not in settings.types:
+            types = settings.types
+            if 'File' in types:
+                types = types | set(['Blob'])
+            if self.context.portal_type not in types:
                 continue
 
             if condition is not None and getattr(self.context, 'REQUEST', None) is getRequest():
@@ -74,9 +76,6 @@ class PigeonholeSchemaExtender(object):
         return schemas
 
     def getFields(self):
-        registry = getUtility(IRegistry)
-        schemas = registry.collectionOfInterface(IPigeonholeSchemaSettings, prefix=REGISTRY_BASE_PREFIX)
-
         fields = []
         for schema_name, schema in self._getSchemas():
             for field_name, field in getFieldsInOrder(schema):
